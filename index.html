@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unity Quest YAML Generator</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 20px;
+        background: #0f172a;
+        color: #e2e8f0;
+        line-height: 1.5;
+      }
+      h1,
+      h3 {
+        margin-top: 0;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: auto;
+      }
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+      label {
+        display: block;
+        margin: 12px 0 6px;
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 1px solid #475569;
+        background: #0f172a;
+        color: #f8fafc;
+        font-family: inherit;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      }
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      button {
+        margin-right: 8px;
+        margin-top: 10px;
+        padding: 10px 16px;
+        border: 0;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        color: white;
+        background: #3b82f6;
+        transition:
+          background-color 0.2s,
+          transform 0.1s;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      button:active {
+        transform: scale(0.97);
+      }
+      button.primary {
+        background: #16a34a;
+      }
+      button.primary:hover {
+        background: #15803d;
+      }
+      pre {
+        background: #020617;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 16px;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-size: 0.9rem;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      small {
+        color: #94a3b8;
+        display: inline-block;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Quest Generator</h1>
+
+      <div class="card">
+        <h3>Quest Data</h3>
+        <div class="grid">
+          <div>
+            <label>File name</label>
+            <input id="mName" value="LuckPotion" />
+          </div>
+          <br />
+          <div>
+            <label>questName</label>
+            <input id="questName" value="Potrzebuje szczęsia" />
+          </div>
+        </div>
+
+        <label>description</label>
+        <input id="description" value="Przynieś potke szczęścia pechowcowi" />
+
+        <div class="grid">
+          <div>
+            <label>Quest Item</label>
+            <input id="itemGuid" value="" />
+          </div>
+          <div>
+            <label>rewardGold</label>
+            <input id="rewardGold" type="number" value="10" />
+          </div>
+          <div style="display: none">
+            <label>m_EditorClassIdentifier</label>
+            <input id="editorClass" value="Assembly-CSharp::Quest" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="display: none">
+        <h3>References</h3>
+        <div class="grid">
+          <div>
+            <label>m_Script GUID</label>
+            <input id="scriptGuid" value="8168d781fd0d21a458b5e5d77045fc22" />
+          </div>
+          <div>
+            <label>questItem GUID</label>
+            <!-- <input id="itemGuid" value="" /> -->
+          </div>
+        </div>
+        <small>These GUIDs must match your Unity project assets.</small>
+      </div>
+
+      <div class="card">
+        <h3>Dialogi (one line = one element)</h3>
+        <label>Dialog</label>
+        <textarea id="sentences">
+Mam pecha ;-;
+Mógłbyś mi przygotować potkę szczęścia?
+Potrzebujesz do tego gówna które nadgryzł karaś,
+wódy...
+Znaczy wody i
+słomy.
+Powodzenia!</textarea
+        >
+
+        <label>Dialog po pierwszej interakcji</label>
+        <textarea id="afterInteraction">
+Co się gapisz? Idź tą potkę zrób</textarea
+        >
+
+        <label>Dialog po ukończeniu questa</label>
+        <textarea id="afterCompletion">Dzięki ci wielkie :3</textarea>
+      </div>
+
+      <div class="card">
+        <button class="primary" onclick="generate()">Generuj</button>
+        <button onclick="copyOut()">Kopiuj</button>
+        <button onclick="downloadYml()">Download</button>
+      </div>
+
+      <div class="card">
+        <h3>Generated quest</h3>
+        <pre id="out"></pre>
+      </div>
+    </div>
+
+    <script>
+      function yamlSingleQuoted(str) {
+        return "'" + String(str).replace(/'/g, "''") + "'";
+      }
+
+      function parseLines(id) {
+        return document
+          .getElementById(id)
+          .value.split(/\r?\n/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      function emitArray(lines) {
+        if (!lines.length) return "  []";
+        return "\n" + lines.map((l) => "  - " + yamlSingleQuoted(l)).join("\n");
+      }
+
+      function generate() {
+        const mName =
+          document.getElementById("mName").value.trim() || "LuckPotion";
+        const questName = document.getElementById("questName").value.trim();
+        const description = document.getElementById("description").value.trim();
+        const rewardGold =
+          parseInt(document.getElementById("rewardGold").value, 10) || 0;
+        const editorClass =
+          document.getElementById("editorClass").value.trim() ||
+          "Assembly-CSharp::Quest";
+        const scriptGuid = document.getElementById("scriptGuid").value.trim();
+        const itemGuid = document.getElementById("itemGuid").value.trim();
+
+        const sentences = parseLines("sentences");
+        const afterInteraction = parseLines("afterInteraction");
+        const afterCompletion = parseLines("afterCompletion");
+
+        const yaml = `%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ${scriptGuid}, type: 3}
+  m_Name: ${yamlSingleQuoted(mName)}
+  m_EditorClassIdentifier: ${yamlSingleQuoted(editorClass)}
+  sentences:${emitArray(sentences)}
+  sentencesAfterInteraction:${emitArray(afterInteraction)}
+  sentencesAfterCompletion:${emitArray(afterCompletion)}
+  questName: ${yamlSingleQuoted(questName)}
+  description: ${yamlSingleQuoted(description)}
+  questItem: {fileID: 0}
+  rewardGold: ${rewardGold}
+#Item: ${itemGuid}
+`;
+        document.getElementById("out").textContent = yaml;
+        return yaml;
+      }
+
+      async function copyOut() {
+        const txt = generate();
+        await navigator.clipboard.writeText(txt);
+        alert("Copied!");
+      }
+
+      function downloadYml() {
+        const mName =
+          document.getElementById("mName").value.trim() || "LuckPotion";
+        const txt = generate();
+        const blob = new Blob([txt], { type: "text/yaml;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = mName + ".asset";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      generate();
+    </script>
+  </body>
+</html>
